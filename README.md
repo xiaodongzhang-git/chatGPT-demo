@@ -1,9 +1,11 @@
 # chatGPT demo
 
 # run
-const OPENAI_API_KEY = "your api key"; （constant.ts）
-yarn install
-yarn dev
+1. const OPENAI_API_KEY = "your api key"; （constant.ts）
+
+2. yarn install
+
+3. yarn dev
 
 # route
 
