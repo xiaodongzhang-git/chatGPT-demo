@@ -40,141 +40,144 @@
   </v-container>
 </template>
 
-<script>
+<script lang="ts">
+import { Component, Vue } from 'vue-property-decorator';
 import eventBus from "@/eventBus";
 import { LANGUAGE_INFO } from "@/constant";
 import { openaiService } from '@/services/openaiService';
 
-export default {
-  data() {
-    return {
-      messages: [],
-      isRecording: false,
-      tempResult: '',
-      recognition: null,
-      language: '',
-      isButtonDisabled: false,
-    };
-  },
+@Component
+export default class Chat extends Vue {
+  messages: Array<any> = [];
+  isRecording: boolean = false;
+  tempResult: string = '';
+  recognition: any = null;
+  language: string = '';
+  isButtonDisabled: boolean = false;
+
   created() {
     eventBus.$on("language-changed", this.onLanguageChanged);
     this.recognition = null;
-  },
+  }
+
   beforeDestroy() {
     eventBus.$off("language-changed", this.onLanguageChanged);
     this.recognition = null;
-  },
-  methods: {
-    onLanguageChanged(selectedLanguage) {
-      if(this.language != selectedLanguage) {
-        this.language = selectedLanguage
-        this.sendMessage(LANGUAGE_INFO[this.language].description);
+  }
+
+  onLanguageChanged(selectedLanguage:string) {
+    if (this.language != selectedLanguage) {
+      this.language = selectedLanguage
+      this.sendMessage(LANGUAGE_INFO[this.language].description);
+    }
+  }
+
+  onResult(event: any) {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        this.tempResult += event.results[i][0].transcript + '. ';
       }
-    },
-    onResult(event) {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          this.tempResult +=  event.results[i][0].transcript + '. ';
-        }
-      }
-      this.scrollToBottom();
-    },
+    }
+    this.scrollToBottom();
+  }
 
-    onEnd() {
-      this.addMessage(this.tempResult);
-      this.tempResult = "";
-    },
+  onEnd() {
+    this.addMessage(this.tempResult);
+    this.tempResult = "";
+  }
 
-    onError(event) {
-      console.error(`Speech recognition error: ${event.error}`);
-      this.onEnd();
-    },
+  onError(event: any) {
+    console.error(`Speech recognition error: ${event.error}`);
+    this.onEnd();
+  }
 
-    startSpeechRecognition() {
-      this.cleanUpRecognition();
-      if(!this.language) {
-        alert('Please select a language first on the right!')
-        return;
-      }
+  startSpeechRecognition() {
+    this.cleanUpRecognition();
+    if (!this.language) {
+      alert('Please select a language first on the right!')
+      return;
+    }
 
-      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.recognition = new SpeechRecognition();
-        console.log(LANGUAGE_INFO[this.language].lang);
-        this.recognition.lang = LANGUAGE_INFO[this.language].lang; // 设置识别的语言
-        this.recognition.maxAlternatives = 1;
-        this.recognition.continuous = true;
-        this.recognition.interimResults = true;
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      this.recognition = new SpeechRecognition();
+      this.recognition.lang = LANGUAGE_INFO[this.language].lang; // 设置识别的语言
+      this.recognition.maxAlternatives = 1;
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
 
-        this.recognition.addEventListener("error", this.onError);
-        this.recognition.addEventListener("result", this.onResult);
-        this.recognition.addEventListener("end", this.onEnd);
+      this.recognition.addEventListener("error", this.onError);
+      this.recognition.addEventListener("result", this.onResult);
+      this.recognition.addEventListener("end", this.onEnd);
 
-        if (!this.isRecording) {
-          this.recognition.start();
-          this.isRecording = true;
-        } else {
-          this.isRecording = false;
-          this.recognition.stop();
-          this.onEnd();
-          // this.cleanUpRecognition();
-        }
+      if (!this.isRecording) {
+        this.recognition.start();
+        this.isRecording = true;
       } else {
-        console.error('SpeechRecognition API not supported in this browser.');
+        this.isRecording = false;
+        this.recognition.stop();
+        this.onEnd();
+        // this.cleanUpRecognition();
       }
-    },
+    } else {
+      console.error('SpeechRecognition API not supported in this browser.');
+    }
+  }
 
-    addMessage(text) {
-      if(text && !this.isButtonDisabled){
-        this.messages.push({ id: Date.now(), user: "Me", text });
-        this.scrollToBottom();
-        this.sendMessage(text);
-      }
-    },
+  addMessage(text: string) {
+    if (text && !this.isButtonDisabled) {
+      this.messages.push({ id: Date.now(), user: "Me", text });
+      this.scrollToBottom();
+      this.sendMessage(text);
+    }
+  }
 
-    playMessage(messageText) {
-      const utterance = new SpeechSynthesisUtterance(messageText);
-      utterance.lang = LANGUAGE_INFO[this.language].lang;
-      console.log(LANGUAGE_INFO[this.language].lang);
-      speechSynthesis.speak(utterance);
-    },
+  playMessage(messageText: string) {
+    const utterance = new SpeechSynthesisUtterance(messageText);
+    utterance.lang = LANGUAGE_INFO[this.language].lang;
+    console.log(LANGUAGE_INFO[this.language].lang);
+    speechSynthesis.speak(utterance);
+  }
 
-    cleanUpRecognition() {
-      if (this.recognition) {
-        this.recognition.removeEventListener('result', this.onResult);
-        this.recognition.removeEventListener('end', this.onEnd);
-        this.recognition.removeEventListener('error', this.onError);
-        this.recognition.removeEventListener('speechend', this.onSpeechEnd);
+  cleanUpRecognition() {
+    if (this.recognition) {
+      this.recognition.removeEventListener('result', this.onResult);
+      this.recognition.removeEventListener('end', this.onEnd);
+      this.recognition.removeEventListener('error', this.onError);
 
-        this.recognition = null;
-      }
-    },
+      this.recognition = null;
+    }
+  }
 
-    async sendMessage(prompt) {
-      if(this.recognition) {
-        this.cleanUpRecognition();
-      }
-      this.isButtonDisabled = true;
-      const text = await openaiService.fetchResponse(this.$axios, prompt, LANGUAGE_INFO[this.language].role);
-      if(text) {
-        this.messages.push({ id: Date.now(), user: "gpt", text });
-        this.playMessage(text);
-        this.scrollToBottom();
-      }
-      this.isButtonDisabled = false;
-    },
+  async sendMessage(prompt: string) {
+    if (this.recognition) {
+      this.cleanUpRecognition();
+    }
+    this.isButtonDisabled = true;
+    const text = await openaiService.fetchResponse(this.$axios, prompt, LANGUAGE_INFO[this.language].role);
+    if (text) {
+      this.messages.push({ id: Date.now(), user: "gpt", text });
+      this.playMessage(text);
+      this.scrollToBottom();
+    }
+    this.isButtonDisabled = false;
+  }
 
-    scrollToBottom() {
+  scrollToBottom() {
     this.$nextTick(() => {
-      const messageList = this.$refs.messageList.$el;
-      if (messageList) {
-        messageList.scrollTop = messageList.scrollHeight;
+      if(this.$refs.messageList) {
+        const messageList = (this.$refs.messageList as Vue).$el;
+        if (messageList) {
+          messageList.scrollTop = messageList.scrollHeight;
+        }
       }
+      
     });
-  },
-  },
-};
+  }
+
+}
 </script>
+
 
 <style scoped>
 .chat-window {

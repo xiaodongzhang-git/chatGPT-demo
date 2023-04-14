@@ -18,10 +18,10 @@ export const openaiService = {
           content: prompt,
         },
       ],
-      max_tokens: 200,
+      max_tokens: 3800,
       n: 1,
       stop: null,
-      temperature: 0.8,
+      temperature: 1,
     };
 
     try {
